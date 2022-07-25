@@ -1,39 +1,49 @@
 #pragma once
 
-#include "EventListener.h"
+#include "Clock.h"
+#include "EventHandler.h"
 #include "GameMode.h"
 #include "Renderer.h"
+#include "Snake.h"
 
+#include <SDL.h>
 #include <stdint.h>
 #include <memory>
 
-namespace defaults
+namespace GameConstants
 {
-	constexpr uint16_t screenWidth		= 704;
-	constexpr uint16_t screenHeigth		= 704;
-	constexpr uint16_t gridWidth		= 32;
-	constexpr uint16_t gridHeight		= 32;
-	constexpr uint16_t targetFPS		= 10;
+	constexpr uint16_t msPerFrame = 100;
+	constexpr uint16_t initialSnakeSize = 3;
+	constexpr uint16_t growthPerFood = 5;
+	constexpr uint16_t initialSnakePositionX = 0;
+	constexpr uint16_t initialSnakePositionY = 0;
+	constexpr SnakeDirection initialSnakeDirection = SnakeDirection::Down;
+	constexpr uint16_t msPerFrameDuringGameOver = 25;
+}
+
+namespace Variables
+{
+	static uint16_t gridWidth;
+	static uint16_t gridHegith;
+	
 }
 
 struct GameProperties
 {
 	uint16_t screenWidth;
-	uint16_t screenHeigth;
+	uint16_t screenHeight;
 	uint16_t gridWidth;
 	uint16_t gridHeight;
-	uint16_t msPerFrame;
 
-	GameProperties(uint16_t screenWidth = defaults::screenWidth,
-				uint16_t screenHeigth = defaults::screenHeigth,
-		uint16_t gridWidth = defaults::gridWidth,
-		uint16_t gridHeight = defaults::gridHeight,
-		uint16_t targetFPS = defaults::targetFPS) :
+	GameProperties(
+		uint16_t screenWidth = 704,
+		uint16_t screenHeigth = 704,
+		uint16_t gridWidth = 32,
+		uint16_t gridHeight = 32) :
 		screenWidth(screenWidth),
-		screenHeigth(screenHeigth),
+		screenHeight(screenHeigth),
 		gridWidth(gridWidth),
-		gridHeight(gridHeight),
-		msPerFrame(static_cast<uint16_t>((1.f / targetFPS) * 1000))
+		gridHeight(gridHeight)
 	{}
 };
 
@@ -48,20 +58,24 @@ enum class GameState
 class Game
 {
 public:
-	Game(const GameProperties& gameProperties = GameProperties()) : 
-		m_gameProperties(gameProperties)
+	Game(const GameProperties& properties = GameProperties()) :
+		m_properties(properties),
+		m_gameMode(std::make_shared<GameMode>(m_properties.gridWidth, m_properties.gridHeight, m_state)),
+		m_renderer(std::make_shared<Renderer>(m_properties, m_gameMode->GetSnake(), m_gameMode->GetFood())),
+		m_eventHandler(std::make_unique<EventHandler>(m_state, m_gameMode, m_renderer)),
+		m_state(GameState::Running)
 	{}
 
 	void Run();
-	
+
+	void OnQuitEvent() { m_state = GameState::Quit; }
+
 private:
-	const GameProperties m_gameProperties;
-
-	std::shared_ptr<EventListener> m_eventListener;
-	std::shared_ptr<GameMode> m_GamemMode;
+	const GameProperties m_properties;
+	GameState m_state;
+	std::shared_ptr<GameMode> m_gameMode;
 	std::shared_ptr<Renderer> m_renderer;
-
-	GameState m_gameState = GameState::Running;
+	std::shared_ptr<EventHandler> m_eventHandler;
 
 private:
 	void GameLoop();
